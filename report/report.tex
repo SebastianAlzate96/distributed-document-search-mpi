@@ -1,0 +1,477 @@
+\documentclass[12pt,letterpaper]{article}
+
+\usepackage[spanish,es-tabla]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+
+\geometry{margin=1in}
+\graphicspath{{figures/}}
+
+\setlength{\parskip}{0.6em}
+\setlength{\parindent}{0pt}
+
+\title{\textbf{Motor de Búsqueda Distribuido con MPI, Ranking TF-IDF y Balance de Carga}}
+\author{Sebastian Alzate Vargas -- COMP6786 -- Proyecto Final}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Este proyecto implementa un motor de búsqueda distribuido utilizando MPI. El sistema trabaja con una colección grande de documentos y permite buscar una consulta dentro de ellos. Se desarrollaron varias versiones del programa: una versión serial, una versión MPI simple, una versión MPI con ranking TF-IDF y una versión MPI TF-IDF con balanceo de carga por cantidad de palabras.
+
+El objetivo principal fue estudiar cómo el diseño paralelo afecta el tiempo de ejecución, el speedup, la eficiencia y el balance de carga. Para esto se usó un conjunto de 100,000 documentos sintéticos y se compararon los resultados usando 1, 2, 4 y 8 procesos MPI. Los resultados muestran que MPI reduce el tiempo de búsqueda y que el diseño de la partición influye directamente en el rendimiento.
+\end{abstract}
+
+\section{Introducción}
+
+El propósito de este proyecto fue construir un sistema distribuido sencillo, pero suficientemente completo, para analizar el rendimiento de una búsqueda de documentos usando MPI.
+
+La idea general es parecida a un motor de búsqueda básico. Tenemos muchos documentos y una consulta, por ejemplo:
+
+\begin{center}
+\texttt{mpi\_speedup}
+\end{center}
+
+El programa debe revisar los documentos, calcular cuáles son los más relevantes para esa consulta y devolver los mejores resultados.
+
+Si una sola computadora o un solo proceso revisa todos los documentos, el trabajo puede tardar más. Por eso se usa MPI: se divide el conjunto de documentos entre varios procesos. Cada proceso revisa una parte, calcula sus mejores resultados locales y luego el proceso principal combina todo para obtener el Top 10 global.
+
+Este proyecto no solo busca que el programa corra más rápido. También busca mostrar cómo diferentes decisiones de diseño afectan el rendimiento. Por eso se implementaron varias versiones:
+
+\begin{itemize}
+\item una versión serial,
+\item una versión MPI simple,
+\item una versión MPI con ranking TF-IDF,
+\item una versión MPI TF-IDF con balanceo de carga.
+\end{itemize}
+
+\section{Descripción del problema}
+
+El problema consiste en buscar una consulta dentro de una colección grande de documentos. Cada documento tiene un título, un tema, un número de palabras y un texto.
+
+Por ejemplo, un documento puede tener esta información:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Campo & Ejemplo \\
+\midrule
+ID & 43690 \\
+Título & Parallel Computing Document 43690 \\
+Tema & parallel computing \\
+Cantidad de palabras & 156 \\
+Texto & Documento generado con palabras relacionadas al tema \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+El programa recibe una consulta y debe calcular un puntaje para cada documento. Los documentos con mayor puntaje se muestran como los más relevantes.
+
+Este problema se puede paralelizar porque cada documento puede evaluarse de forma independiente. Es decir, un proceso puede revisar unos documentos mientras otro proceso revisa otros documentos. Después solo se necesita combinar los mejores resultados.
+
+\section{Dataset}
+
+El dataset se generó de forma sintética usando Python. Se decidió generar los documentos en vez de descargar un dataset externo para tener control sobre el tamaño de los datos y sobre los temas incluidos.
+
+Cada documento contiene:
+
+\begin{itemize}
+\item ID del documento,
+\item título,
+\item tema,
+\item cantidad de palabras,
+\item texto completo.
+\end{itemize}
+
+Los temas usados fueron:
+
+\begin{itemize}
+\item parallel computing,
+\item distributed systems,
+\item machine learning,
+\item databases,
+\item cybersecurity,
+\item operating systems,
+\item data mining,
+\item sports analytics.
+\end{itemize}
+
+Para los experimentos principales se generaron 100,000 documentos. Además, los documentos no tienen todos el mismo tamaño. Algunos documentos son cortos y otros son largos. Esto permite analizar el balance de carga, porque repartir la misma cantidad de documentos no siempre significa repartir la misma cantidad de trabajo.
+
+\section{Idea general del sistema}
+
+El sistema funciona en varias etapas:
+
+\begin{enumerate}
+\item Se genera el dataset de documentos.
+\item El usuario escribe una consulta.
+\item El programa divide los documentos entre los procesos MPI.
+\item Cada proceso busca la consulta en sus documentos.
+\item Cada proceso calcula sus mejores 10 resultados locales.
+\item El proceso 0 recibe los resultados locales.
+\item El proceso 0 construye el Top 10 global.
+\end{enumerate}
+
+La Figura~\ref{fig:workflow} resume la idea general.
+
+\begin{figure}[H]
+\centering
+\fbox{
+\begin{minipage}{0.9\textwidth}
+\centering
+Dataset de documentos \\
+$\Downarrow$ \\
+División entre procesos MPI \\
+$\Downarrow$ \\
+Cada proceso busca en sus documentos locales \\
+$\Downarrow$ \\
+Cada proceso obtiene su Top 10 local \\
+$\Downarrow$ \\
+Proceso 0 combina resultados \\
+$\Downarrow$ \\
+Top 10 global
+\end{minipage}
+}
+\caption{Flujo general del motor de búsqueda distribuido.}
+\label{fig:workflow}
+\end{figure}
+
+\section{Versiones implementadas}
+
+\subsection{Versión serial}
+
+La versión serial sirve como punto de comparación. En esta versión, un solo proceso lee todos los documentos y calcula el puntaje de cada uno.
+
+El puntaje simple se calcula así:
+
+\[
+\text{score} = 3 \cdot \text{apariciones en título} + \text{apariciones en texto}
+\]
+
+El título tiene más peso porque normalmente resume mejor el contenido del documento. Por eso una coincidencia en el título vale tres veces más que una coincidencia en el texto.
+
+Esta versión es fácil de entender, pero no aprovecha paralelismo.
+
+\subsection{Versión MPI simple}
+
+En la versión MPI simple, los documentos se dividen entre varios procesos. Si hay 100,000 documentos y 4 procesos, cada proceso recibe aproximadamente 25,000 documentos.
+
+Cada proceso hace lo siguiente:
+
+\begin{enumerate}
+\item revisa sus documentos locales,
+\item calcula el puntaje simple para cada documento,
+\item guarda sus mejores 10 resultados,
+\item envía esos resultados al proceso 0.
+\end{enumerate}
+
+El proceso 0 junta los resultados de todos los procesos y obtiene el Top 10 global.
+
+Esta versión es rápida porque solo necesita una pasada por los documentos.
+
+\subsection{Versión MPI con TF-IDF}
+
+La versión MPI simple cuenta apariciones de palabras. Eso funciona, pero es un ranking básico. Para mejorar el ranking se implementó TF-IDF.
+
+TF-IDF es una técnica común en recuperación de información. La idea es que una palabra debe pesar más si aparece en un documento, pero no aparece en todos los documentos. Una palabra muy común no debería ser tan importante como una palabra más específica.
+
+El IDF se calculó con la fórmula:
+
+\[
+\text{idf}(t) = \log\left(\frac{N + 1}{df(t) + 1}\right) + 1
+\]
+
+donde:
+
+\begin{itemize}
+\item $N$ es el número total de documentos,
+\item $df(t)$ es el número de documentos donde aparece el término $t$.
+\end{itemize}
+
+Luego, el puntaje TF-IDF de un documento se calcula como:
+
+\[
+\text{score} = \sum_{t \in query}
+\left(3 \cdot tf_{\text{titulo}}(t) + tf_{\text{texto}}(t)\right)
+\cdot idf(t)
+\]
+
+Esta versión es más costosa porque necesita dos pasos:
+
+\begin{enumerate}
+\item calcular en cuántos documentos aparece cada término de la consulta,
+\item calcular el puntaje TF-IDF de cada documento.
+\end{enumerate}
+
+Para obtener el valor global de $df(t)$, cada proceso calcula su conteo local y luego se usa:
+
+\[
+\texttt{MPI\_Allreduce}
+\]
+
+Esto permite sumar los conteos locales de todos los procesos y obtener una estadística global correcta.
+
+\subsection{Versión MPI TF-IDF balanceada}
+
+La versión TF-IDF normal reparte los documentos por cantidad de documentos. Por ejemplo, con 4 procesos cada proceso recibe cerca de 25,000 documentos.
+
+El problema es que no todos los documentos tienen el mismo tamaño. Un proceso puede recibir 25,000 documentos cortos y otro proceso puede recibir 25,000 documentos más largos. En ese caso, ambos tienen la misma cantidad de documentos, pero no la misma cantidad de trabajo.
+
+Para mejorar esto, se implementó una versión balanceada por cantidad de palabras. Esta versión usa el campo \texttt{WordCount} para intentar que cada proceso reciba una cantidad parecida de palabras.
+
+La idea es repartir el trabajo así:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Partición estática & Misma cantidad de documentos \\
+Partición balanceada & Cantidad parecida de palabras \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Esto permite estudiar si una mejor distribución del trabajo mejora el tiempo de ejecución y el balance de carga.
+
+\section{Diseño paralelo con MPI}
+
+El diseño paralelo usa varios conceptos importantes de MPI.
+
+\subsection{Distribución del trabajo}
+
+Cada proceso recibe un rango de documentos. Por ejemplo, con 4 procesos:
+
+\begin{center}
+\begin{tabular}{cc}
+\toprule
+Proceso & Documentos asignados \\
+\midrule
+0 & primera parte del dataset \\
+1 & segunda parte del dataset \\
+2 & tercera parte del dataset \\
+3 & cuarta parte del dataset \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Cada proceso trabaja de forma independiente sobre su parte.
+
+\subsection{Comunicación global}
+
+En la versión TF-IDF, los procesos necesitan compartir información. Cada proceso calcula cuántos documentos locales contienen cada término de la consulta. Pero para calcular IDF se necesita el conteo global.
+
+Por eso se usa \texttt{MPI\_Allreduce}. Esta operación suma los conteos locales de todos los procesos y entrega el resultado global a todos.
+
+\subsection{Combinación de resultados}
+
+Cada proceso mantiene un Top 10 local. Luego, el proceso 0 recoge esos resultados locales y construye el Top 10 global.
+
+Esto reduce la cantidad de comunicación. En vez de enviar todos los documentos al proceso 0, cada proceso solo envía sus mejores resultados.
+
+\section{Métricas usadas}
+
+Para evaluar el proyecto se usaron varias métricas.
+
+\subsection{Tiempo de ejecución}
+
+Es el tiempo total que tarda el programa en completar la búsqueda.
+
+\subsection{Speedup}
+
+El speedup mide cuánto mejora el tiempo al usar varios procesos:
+
+\[
+S_p = \frac{T_1}{T_p}
+\]
+
+donde $T_1$ es el tiempo con 1 proceso y $T_p$ es el tiempo con $p$ procesos.
+
+\subsection{Eficiencia}
+
+La eficiencia mide qué tan bien se aprovechan los procesos:
+
+\[
+E_p = \frac{S_p}{p}
+\]
+
+Una eficiencia cercana a 1 significa que los procesos se están aprovechando bien. Si la eficiencia baja, puede ser por comunicación, sincronización, lectura de archivo, overhead o desbalance de carga.
+
+\subsection{Balance de carga}
+
+Para medir el balance de carga se usaron dos razones:
+
+\[
+\text{word imbalance} =
+\frac{\max(\text{palabras por proceso})}
+{\min(\text{palabras por proceso})}
+\]
+
+\[
+\text{time imbalance} =
+\frac{\max(\text{tiempo por proceso})}
+{\min(\text{tiempo por proceso})}
+\]
+
+Un valor cercano a 1 significa mejor balance.
+
+\section{Resultados experimentales}
+
+Los experimentos se realizaron con 100,000 documentos y la consulta:
+
+\begin{center}
+\texttt{mpi\_speedup}
+\end{center}
+
+\subsection{Resultados de MPI simple}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Modelo & Procesos & Tiempo (s) & Speedup & Eficiencia \\
+\midrule
+MPI Simple & 1 & 1.002666 & 1.0000 & 1.0000 \\
+MPI Simple & 2 & 0.532996 & 1.8812 & 0.9406 \\
+MPI Simple & 4 & 0.314630 & 3.1868 & 0.7967 \\
+MPI Simple & 8 & 0.244280 & 4.1046 & 0.5131 \\
+\bottomrule
+\end{tabular}
+\caption{Resultados de rendimiento para la versión MPI simple.}
+\end{table}
+
+La versión MPI simple redujo el tiempo de 1.002666 segundos con 1 proceso a 0.244280 segundos con 8 procesos. Esto representa un speedup de 4.1046.
+
+\subsection{Resultados de MPI TF-IDF}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+Modelo & Procesos & Tiempo (s) & Speedup & Eficiencia \\
+\midrule
+MPI TF-IDF & 1 & 3.809188 & 1.0000 & 1.0000 \\
+MPI TF-IDF & 2 & 1.818630 & 2.0945 & 1.0473 \\
+MPI TF-IDF & 4 & 0.973448 & 3.9131 & 0.9783 \\
+MPI TF-IDF & 8 & 0.801135 & 4.7547 & 0.5943 \\
+\bottomrule
+\end{tabular}
+\caption{Resultados de rendimiento para la versión MPI TF-IDF.}
+\end{table}
+
+La versión TF-IDF tarda más que la versión simple porque hace más trabajo. Sin embargo, también se beneficia del paralelismo. El tiempo bajó de 3.809188 segundos con 1 proceso a 0.801135 segundos con 8 procesos.
+
+La eficiencia con 2 procesos fue ligeramente mayor que 1. Esto puede ocurrir por efectos de caché, lectura de archivo o variación del sistema. No se interpreta como escalabilidad perfecta, sino como un resultado experimental influenciado por la máquina y el ambiente de ejecución.
+
+\section{Comparación visual de rendimiento}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{runtime_comparison.png}
+\caption{Comparación del tiempo de ejecución entre MPI simple y MPI TF-IDF.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{speedup_comparison.png}
+\caption{Comparación del speedup entre MPI simple y MPI TF-IDF.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{efficiency_comparison.png}
+\caption{Comparación de eficiencia entre MPI simple y MPI TF-IDF.}
+\end{figure}
+
+\section{Balance de carga}
+
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lrrrrrr}
+\toprule
+Versión & Procesos & Tiempo (s) & Speedup & Eficiencia & Word Imbalance & Time Imbalance \\
+\midrule
+TF-IDF Static & 4 & 0.973448 & 3.9131 & 0.9783 & 1.0233 & 1.0656 \\
+TF-IDF Balanced & 4 & 0.916161 & 4.1578 & 1.0394 & 1.0001 & 1.0282 \\
+TF-IDF Static & 8 & 0.801135 & 4.7547 & 0.5943 & 1.0286 & 1.1519 \\
+TF-IDF Balanced & 8 & 0.795925 & 4.7859 & 0.5982 & 1.0009 & 1.2004 \\
+\bottomrule
+\end{tabular}
+}
+\caption{Comparación entre partición estática y partición balanceada por palabras.}
+\end{table}
+
+Con 4 procesos, la versión balanceada mejoró el balance de palabras y también redujo el tiempo total. El desbalance de palabras bajó de 1.0233 a 1.0001, y el tiempo bajó de 0.973448 a 0.916161 segundos.
+
+Con 8 procesos, el balance de palabras también mejoró, bajando de 1.0286 a 1.0009. Sin embargo, el desbalance de tiempo aumentó ligeramente. Esto muestra que repartir palabras de forma más uniforme no garantiza tiempos exactamente iguales. También influyen otros factores como lectura de archivo, caché, overhead, sistema operativo y ubicación de los datos.
+
+\section{Gráficas de balance}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{tfidf_balance_runtime.png}
+\caption{Tiempo de ejecución para TF-IDF con partición estática y balanceada.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{tfidf_word_imbalance.png}
+\caption{Desbalance de palabras para partición estática y balanceada.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{tfidf_time_imbalance.png}
+\caption{Desbalance de tiempo para partición estática y balanceada.}
+\end{figure}
+
+\section{Discusión}
+
+Los resultados muestran que MPI permite reducir el tiempo de búsqueda al dividir el trabajo entre varios procesos. La versión MPI simple fue la más rápida porque usa un ranking básico y solo necesita una pasada por los documentos.
+
+La versión MPI TF-IDF fue más costosa, pero también más completa. Esta versión calcula estadísticas globales de los términos usando \texttt{MPI Allreduce}. Esto agrega comunicación y una pasada adicional por el dataset, pero permite construir un ranking más realista.
+
+La versión balanceada muestra que el diseño de la partición también importa. Repartir la misma cantidad de documentos no siempre es lo mismo que repartir la misma cantidad de trabajo. Al usar la cantidad de palabras como criterio, se logró una distribución más uniforme de palabras entre procesos.
+
+Sin embargo, los resultados también muestran una limitación importante: un mejor balance de palabras no siempre produce un mejor balance de tiempo. Esto ocurre porque el tiempo real depende de más factores, como lectura de archivo, memoria, caché, actividad del sistema operativo y overhead de comunicación.
+
+\section{Limitaciones}
+
+Este proyecto usa un dataset sintético, no una colección real de documentos. Esto permite controlar el tamaño de los datos, pero no captura toda la complejidad de un motor de búsqueda real.
+
+Además, el sistema no implementa un índice invertido completo. En un motor de búsqueda real, normalmente no se escanean todos los documentos en cada consulta. Se construye un índice para encontrar resultados más rápido.
+
+\section{Conclusión}
+
+En este proyecto se implementó un motor de búsqueda distribuido usando MPI. Se desarrollaron varias versiones para estudiar cómo el diseño afecta el rendimiento: serial, MPI simple, MPI TF-IDF y MPI TF-IDF balanceado por palabras.
+
+Los resultados muestran que MPI reduce el tiempo de ejecución al aumentar el número de procesos. También muestran que una versión más avanzada, como TF-IDF, requiere más trabajo, pero produce un ranking más completo. Además, el balanceo por palabras ayuda a distribuir mejor la carga, aunque no garantiza tiempos perfectamente iguales.
+
+El proyecto demuestra la importancia de medir el rendimiento con varias métricas. No basta con mirar el tiempo total; también es necesario analizar speedup, eficiencia y balance de carga para entender mejor el comportamiento de un programa paralelo.
+
+\section{Archivos principales}
+
+Los archivos principales del proyecto son:
+
+\begin{itemize}
+\item \texttt{src/search\_serial.c}
+\item \texttt{src/search\_mpi.c}
+\item \texttt{src/search\_mpi\_simple.c}
+\item \texttt{src/search\_mpi\_tfidf.c}
+\item \texttt{src/search\_mpi\_tfidf\_balanced.c}
+\item \texttt{scripts/generate\_documents.py}
+\item \texttt{scripts/plot\_comparison.py}
+\item \texttt{scripts/plot\_balance.py}
+\end{itemize}
+
+\end{document}

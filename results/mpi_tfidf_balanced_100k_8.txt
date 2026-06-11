@@ -1,0 +1,36 @@
+MPI TF-IDF Balanced Distributed Search completed.
+Input file    : data/documents.csv
+Documents     : 100000
+Query         : mpi speedup
+Processes     : 8
+Time          : 0.795925 seconds
+
+TF-IDF global term statistics:
+Term: mpi                  | DF: 10238 | IDF: 3.278976
+Term: speedup              | DF: 10116 | IDF: 3.290963
+
+Load balance by process:
+Process 0 | Documents: 12570 | Words: 2788569 | Local time: 0.663028 seconds
+Process 1 | Documents: 12435 | Words: 2788597 | Local time: 0.676106 seconds
+Process 2 | Documents: 12278 | Words: 2787581 | Local time: 0.757697 seconds
+Process 3 | Documents: 12355 | Words: 2788511 | Local time: 0.751493 seconds
+Process 4 | Documents: 12644 | Words: 2788600 | Local time: 0.723268 seconds
+Process 5 | Documents: 12588 | Words: 2788595 | Local time: 0.762022 seconds
+Process 6 | Documents: 12496 | Words: 2788269 | Local time: 0.722742 seconds
+Process 7 | Documents: 12634 | Words: 2790193 | Local time: 0.795925 seconds
+
+Imbalance metrics:
+Word imbalance ratio: 1.0009
+Time imbalance ratio: 1.2004
+
+Top 10 results:
+ 1. DocID: 43690 | Score: 42.7226 | Topic: parallel_computing | Words: 156 | Title: Parallel Computing Document 43690
+ 2. DocID: 73230 | Score: 42.6866 | Topic: parallel_computing | Words: 613 | Title: Parallel Computing Document 73230
+ 3. DocID: 11569 | Score: 39.4196 | Topic: parallel_computing | Words: 127 | Title: Parallel Computing Document 11569
+ 4. DocID: 17629 | Score: 39.4076 | Topic: parallel_computing | Words: 238 | Title: Parallel Computing Document 17629
+ 5. DocID: 93443 | Score: 36.1886 | Topic: parallel_computing | Words: 176 | Title: Parallel Computing Document 93443
+ 6. DocID: 29372 | Score: 36.1646 | Topic: parallel_computing | Words: 806 | Title: Parallel Computing Document 29372
+ 7. DocID: 48713 | Score: 36.1646 | Topic: parallel_computing | Words: 188 | Title: Parallel Computing Document 48713
+ 8. DocID: 67452 | Score: 36.1526 | Topic: parallel_computing | Words: 244 | Title: Parallel Computing Document 67452
+ 9. DocID: 74766 | Score: 36.1407 | Topic: parallel_computing | Words: 169 | Title: Parallel Computing Document 74766
+10. DocID: 81948 | Score: 36.1407 | Topic: parallel_computing | Words: 141 | Title: Parallel Computing Document 81948

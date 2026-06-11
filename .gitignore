@@ -1,0 +1,25 @@
+# Compiled binaries
+search_serial
+search_mpi
+search_mpi_tfidf
+search_mpi_tfidf_balanced
+search_mpi_tfidf_balanced
+test_mpi
+
+# Generated large dataset
+data/documents.csv
+
+# LaTeX temporary files
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+
+# Python cache
+__pycache__/
+*.pyc
+
+# System files
+.DS_Store
+Thumbs.db

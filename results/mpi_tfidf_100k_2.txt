@@ -1,0 +1,30 @@
+MPI TF-IDF Distributed Search completed.
+Input file    : data/documents.csv
+Documents     : 100000
+Query         : mpi speedup
+Processes     : 2
+Time          : 1.998864 seconds
+
+TF-IDF global term statistics:
+Term: mpi                  | DF: 10238 | IDF: 3.278976
+Term: speedup              | DF: 10116 | IDF: 3.290963
+
+Load balance by process:
+Process 0 | Documents: 50000 | Words: 11233342 | Local time: 1.998864 seconds
+Process 1 | Documents: 50000 | Words: 11075573 | Local time: 1.848379 seconds
+
+Imbalance metrics:
+Word imbalance ratio: 1.0142
+Time imbalance ratio: 1.0814
+
+Top 10 results:
+ 1. DocID: 43690 | Score: 42.7226 | Topic: parallel_computing | Words: 156 | Title: Parallel Computing Document 43690
+ 2. DocID: 73230 | Score: 42.6866 | Topic: parallel_computing | Words: 613 | Title: Parallel Computing Document 73230
+ 3. DocID: 11569 | Score: 39.4196 | Topic: parallel_computing | Words: 127 | Title: Parallel Computing Document 11569
+ 4. DocID: 17629 | Score: 39.4076 | Topic: parallel_computing | Words: 238 | Title: Parallel Computing Document 17629
+ 5. DocID: 93443 | Score: 36.1886 | Topic: parallel_computing | Words: 176 | Title: Parallel Computing Document 93443
+ 6. DocID: 29372 | Score: 36.1646 | Topic: parallel_computing | Words: 806 | Title: Parallel Computing Document 29372
+ 7. DocID: 48713 | Score: 36.1646 | Topic: parallel_computing | Words: 188 | Title: Parallel Computing Document 48713
+ 8. DocID: 67452 | Score: 36.1526 | Topic: parallel_computing | Words: 244 | Title: Parallel Computing Document 67452
+ 9. DocID: 74766 | Score: 36.1407 | Topic: parallel_computing | Words: 169 | Title: Parallel Computing Document 74766
+10. DocID: 81948 | Score: 36.1407 | Topic: parallel_computing | Words: 141 | Title: Parallel Computing Document 81948

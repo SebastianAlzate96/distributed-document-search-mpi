@@ -1,0 +1,22 @@
+MPI Distributed Search completed.
+Input file    : data/documents.csv
+Documents     : 100000
+Query         : mpi speedup
+Processes     : 2
+Time          : 0.532996 seconds
+
+Load balance by process:
+Process 0 | Documents: 50000 | Words: 11233342 | Local time: 0.532996 seconds
+Process 1 | Documents: 50000 | Words: 11075573 | Local time: 0.512481 seconds
+
+Top 10 results:
+ 1. DocID: 43690 | Score: 13 | Topic: parallel_computing | Words: 156 | Title: Parallel Computing Document 43690
+ 2. DocID: 73230 | Score: 13 | Topic: parallel_computing | Words: 613 | Title: Parallel Computing Document 73230
+ 3. DocID: 11569 | Score: 12 | Topic: parallel_computing | Words: 127 | Title: Parallel Computing Document 11569
+ 4. DocID: 17629 | Score: 12 | Topic: parallel_computing | Words: 238 | Title: Parallel Computing Document 17629
+ 5. DocID: 8211 | Score: 11 | Topic: parallel_computing | Words: 182 | Title: Parallel Computing Document 8211
+ 6. DocID: 29372 | Score: 11 | Topic: parallel_computing | Words: 806 | Title: Parallel Computing Document 29372
+ 7. DocID: 30801 | Score: 11 | Topic: parallel_computing | Words: 90 | Title: Parallel Computing Document 30801
+ 8. DocID: 48652 | Score: 11 | Topic: parallel_computing | Words: 237 | Title: Parallel Computing Document 48652
+ 9. DocID: 48713 | Score: 11 | Topic: parallel_computing | Words: 188 | Title: Parallel Computing Document 48713
+10. DocID: 66986 | Score: 11 | Topic: parallel_computing | Words: 146 | Title: Parallel Computing Document 66986

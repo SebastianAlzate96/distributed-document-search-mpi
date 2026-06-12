@@ -317,10 +317,4 @@ El enlace al video demo se encuentra en:
 demo/demo_link.txt
 ```
 
-El video muestra cómo compilar el código, generar el dataset, ejecutar las versiones serial y MPI, y revisar los resultados de rendimiento.
-
-## Autor
-
-Sebastian Alzate Vargas
-
-COMP6786 - Proyecto Final
+o https://drive.google.com/file/d/1iWTTRUFsh0s0bujLSgkzuGyFS_d57m-G/view?usp=sharing
